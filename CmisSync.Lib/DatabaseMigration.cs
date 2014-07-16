@@ -76,7 +76,7 @@ namespace CmisSync.Lib.Cmis
                         return;     // migration is not needed
                     }
 
-                    Logger.DebugFormat("Current Database Schema must be update from {0} to {0}", dbVersion, currentDbVersion);
+                    Logger.DebugFormat("Current Database Schema must be update from {0} to {1}", dbVersion, currentDbVersion);
 
                     switch (dbVersion)
                     {
