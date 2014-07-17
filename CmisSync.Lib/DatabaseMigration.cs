@@ -325,6 +325,93 @@ namespace CmisSync.Lib.Cmis
             }
         }
 
+    
+        /// <summary>
+        /// Gets the database version.
+        /// </summary>
+        /// <returns>The path prefix</returns>
+        /// <param name="connection">Connection.</param>
+        private static string GetPathPrefix(SQLiteConnection connection)
+        {
+            var pathPrefix = ExecuteSQLFunction(connection ,"SELECT value FROM general WHERE key = 'PathPrefix';", null);
+            return pathPrefix.ToString();
+        }
+
+        /// <summary>
+        /// Sets the database version.
+        /// </summary>
+        /// <param name="connection">Connection.</param>
+        /// <param name="version">path prefix</param> 
+        private static void SetPathPrefix(SQLiteConnection connection, string pathPrefix)
+        {
+            var parameters = new Dictionary<string ,object>();
+            parameters.Add("@key", "PathPrefix");
+            parameters.Add("@value", pathPrefix);
+            ExecuteSQLAction(connection ,"UPDATE general SET value = @value WHERE key = @key;", parameters);
+        }
+
+
+        /// <summary>
+        /// Normalize all tables's "path" column.
+        /// </summary>
+        /// <param name="connection">Connection.</param>
+        /// <param name="pathPrefix">Path prefix.</param>
+        public static void AllPathNormalize(SQLiteConnection connection, Config.SyncConfig.Folder syncFolder)
+        {
+            string currentPrefix = GetPathPrefix(connection);
+            string newPrefix = syncFolder.LocalPath;
+            string pathPrefix = newPrefix.Substring(currentPrefix.Length + 1);
+
+
+            string[] targetTables = new string[] { "files", "folders" };
+            foreach (var table in targetTables)
+            {
+                PathNormalize(connection, pathPrefix, table);
+            }
+
+            SetPathPrefix(connection, newPrefix);
+        }
+
+
+        /// <summary>
+        /// Normalize "path" columns
+        /// </summary>
+        /// <param name="connection">database connection.</param>
+        /// <param name="pathPrefix">path prefix</param>
+        /// <param name="tableName">target table</param> 
+        public static void PathNormalize(SQLiteConnection connection, string pathPrefix, string tableName)
+        {
+            try
+            {
+                using (var command = new SQLiteCommand(connection))
+                {
+                    command.CommandText = "SELECT path FROM " + tableName + ";";
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            string path = reader["path"].ToString();
+                            string normalizedPath = path;
+                            if (path.StartsWith(pathPrefix))
+                            {
+                                normalizedPath = path.Substring(pathPrefix.Length + 1);
+                            }
+
+                            var parameters = new Dictionary<string, object>();
+                            parameters.Add("@path", path);
+                            parameters.Add("@normalized_path", normalizedPath);
+                            ExecuteSQLAction(connection, "UPDATE " + tableName + " SET path = @normalized_path WHERE path = @path;", parameters);
+                        }
+                    }
+                }
+            }
+            catch(Exception e)
+            {
+                Logger.Info("Failed to normalize the path column at " + tableName + ".", e);
+                throw;
+            }
+        }
+
         /// <summary>
         /// Fills the object identifier.
         /// </summary>
