@@ -1297,7 +1297,7 @@ namespace CmisSync.Lib.Sync
                         contentStream.Length = file.Length;
                         contentStream.Stream = hashstream;
 
-                        Logger.Debug("Upload Start: " + filePath + " as " + remoteFolder.Path + Path.PathSeparator.ToString() + fileName);
+                        Logger.Debug("Upload Start: " + filePath + " as " + syncItem.RemotePath);
                         remoteDocument = remoteFolder.CreateDocument(properties, contentStream, null);
                         Logger.Debug("remoteFolder.CreateDocument finished.");
                         filehash = hashAlg.Hash;
